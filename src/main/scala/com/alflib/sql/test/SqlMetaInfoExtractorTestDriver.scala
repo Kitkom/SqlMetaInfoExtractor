@@ -12,12 +12,6 @@ import scala.collection.mutable.ListBuffer
 
 object SqlMetaInfoExtractorTestDriver {
   
-  def getTableList(node:LogicalPlan) : Seq[Any] = {
-    if (node.nodeName == "UnresolvedRelation") {
-      return Seq(node.argString.replaceAll("`", ""))
-    }
-    return Seq()
-  }
   
   def main(args:Array[String]) : Unit = {
     val sql = """
@@ -40,7 +34,7 @@ object SqlMetaInfoExtractorTestDriver {
     
     
     val plan: LogicalPlan = sparkParser.parsePlan (sql)
-    print(LogicalPlanVisitor.visit(plan, getTableList(_)).asInstanceOf[Seq[String]])
+    //print(LogicalPlanVisitor.visit(plan, getTableList(_)).asInstanceOf[Seq[String]])
   }
   
   def printPlan(sql:String) : Unit = {
