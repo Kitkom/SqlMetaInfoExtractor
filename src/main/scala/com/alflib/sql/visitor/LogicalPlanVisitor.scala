@@ -9,7 +9,7 @@ import org.apache.spark.sql.execution.command.CreateViewCommand
 
 object LogicalPlanVisitor {
   
-  val logger: Logger=CommonUtils.logger
+  val logger: Logger=Logger.getLogger(getClass)
   
   def visit(plan: With, extract: (LogicalPlan) => Unit) : Unit = {
     for (e <- plan.innerChildren)

@@ -1,11 +1,15 @@
 package com.alflib.sql.utils
 
+import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias}
 import org.apache.spark.sql.execution.command.CreateViewCommand
 
 import scala.collection.mutable.{ListBuffer, Map}
 
 object GlobalMetaInfo {
+  
+  val logger: Logger=Logger.getLogger(getClass)
+  
   var sourceTableList = ListBuffer[String]()
   var tempViewMap = Map[String, LogicalPlan]()
   
@@ -15,6 +19,8 @@ object GlobalMetaInfo {
   }
   
   def cleanUp : Unit = {
+    logger.debug(sourceTableList)
+    logger.debug(tempViewMap)
     sourceTableList = sourceTableList.filter((id:String) => !tempViewMap.contains(id))
   }
   

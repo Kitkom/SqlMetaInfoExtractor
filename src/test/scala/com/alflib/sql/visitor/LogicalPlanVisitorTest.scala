@@ -8,11 +8,8 @@ import org.apache.spark.sql.internal.SQLConf
 
 class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
   
-  val logger: Logger=CommonUtils.logger
   
-  {
-    logger.setLevel(Level.DEBUG)
-  }
+  val logger: Logger=Logger.getLogger(getClass)
   
   test("Basic function: Get table list: With and subquery") {
     val sql =
@@ -29,8 +26,6 @@ class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
     GlobalMetaInfo.clear
     CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, GlobalMetaInfo.extractMetaInfo(_)))
     GlobalMetaInfo.cleanUp
-    logger.debug(GlobalMetaInfo.sourceTableList)
-    logger.debug(GlobalMetaInfo.tempViewMap)
     assert(GlobalMetaInfo.sourceTableList.size == 5)
     assert(GlobalMetaInfo.tempViewMap.size == 3)
   }
@@ -51,8 +46,6 @@ class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
     GlobalMetaInfo.clear
     CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, GlobalMetaInfo.extractMetaInfo(_)))
     GlobalMetaInfo.cleanUp
-    logger.debug(GlobalMetaInfo.sourceTableList)
-    logger.debug(GlobalMetaInfo.tempViewMap)
     assert(GlobalMetaInfo.sourceTableList.size == 3)
     assert(GlobalMetaInfo.tempViewMap.size == 1)
   }
