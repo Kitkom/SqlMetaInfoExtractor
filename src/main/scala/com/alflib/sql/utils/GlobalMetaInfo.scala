@@ -10,8 +10,8 @@ object GlobalMetaInfo {
   
   val logger: Logger=Logger.getLogger(getClass)
   
-  var sourceTableList = ListBuffer[String]()
-  var tempViewMap = Map[String, LogicalPlan]()
+  var sourceTableList = ListBuffer[TableID]()
+  var tempViewMap = Map[TableID, LogicalPlan]()
   
   def clear : Unit = {
     sourceTableList.clear
@@ -19,9 +19,9 @@ object GlobalMetaInfo {
   }
   
   def cleanUp : Unit = {
+    sourceTableList = sourceTableList.filterNot((id:TableID) => tempViewMap.contains(id))
     logger.debug(sourceTableList)
     logger.debug(tempViewMap)
-    sourceTableList = sourceTableList.filter((id:String) => !tempViewMap.contains(id))
   }
   
   def extractSourceList(node:LogicalPlan) : Unit = {
