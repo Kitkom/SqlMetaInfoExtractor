@@ -1,6 +1,6 @@
 package com.alflib.sql.visitor
 
-import com.alflib.sql.utils.{CommonUtils, GlobalMetaInfo}
+import com.alflib.sql.utils.{CommonUtils, Extractors, GlobalMetaInfo, TableID}
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.SparkSqlParser
@@ -24,10 +24,9 @@ class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
           and cB in (select cB from vB)
     """
     GlobalMetaInfo.clear
-    CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, GlobalMetaInfo.extractMetaInfo(_)))
+    CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
     GlobalMetaInfo.cleanUp
-    assert(GlobalMetaInfo.sourceTableList.size == 5)
-    assert(GlobalMetaInfo.tempViewMap.size == 3)
+    assert(GlobalMetaInfo.getSources.size == 5)
   }
   
   test("Basic function: Get table list: create temporary views and tables") {
@@ -44,10 +43,31 @@ class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
     """
     
     GlobalMetaInfo.clear
-    CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, GlobalMetaInfo.extractMetaInfo(_)))
+    CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
     GlobalMetaInfo.cleanUp
-    assert(GlobalMetaInfo.sourceTableList.size == 3)
-    assert(GlobalMetaInfo.tempViewMap.size == 1)
+    assert(GlobalMetaInfo.getSources.size == 3)
+  }
+  
+  test("Basic function: Get table list: table lineage") {
+    val sql =
+    """
+       create temporary view tvA as
+         select cA, cB, cC
+           from dA.tA
+           join dA.tB;
+       
+       insert into table tZ
+       select cA, cB, cC
+         from dB.tC
+         join tvA
+         join (select cA, cB, cC from dC.tD)
+         ;
+    """
+    
+    GlobalMetaInfo.clear
+    CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
+    GlobalMetaInfo.cleanUp
+    assert(GlobalMetaInfo.getQueryUnitInfo(TableID.convertArgString("tZ")).getSourceTables.size == 4)
   }
   
 }
