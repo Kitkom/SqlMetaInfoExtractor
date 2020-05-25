@@ -50,6 +50,7 @@ object GlobalMetaInfo {
   def clear = {
     sourceTableList.clear
     targetedQueryUnitInfoMap.clear
+    untargetedQueryUnitInfoMap.clear
     errors.clear
   }
   
@@ -58,7 +59,7 @@ object GlobalMetaInfo {
     logger.debug(sourceTableList)
     logger.debug(targetedQueryUnitInfoMap.values)
     logger.debug(untargetedQueryUnitInfoMap.values)
-    logger.error(errors)
+    if (!errors.isEmpty) logger.error(errors)
   }
   
   def getSources = {

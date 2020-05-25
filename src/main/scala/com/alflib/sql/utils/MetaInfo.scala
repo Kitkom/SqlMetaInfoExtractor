@@ -44,7 +44,7 @@ class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var logi
   override def toString() = {
     s"""
       | ========QueryUnitInfo=========
-      | $id
+      | [$id]
       | lifeType     = ${lifeType.toString}
       | columns      = (${columns.toList})
       | sources      = (${sources.keys})
@@ -53,12 +53,14 @@ class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var logi
     """.stripMargin
   }
   
+  
+  
   val sourceTableList = ListBuffer[TableID]()
   var sourceResolved = false
   def getSourceTables() : ListBuffer[TableID] = {
     if (!sourceResolved) {
       sourceResolved = true
-      sources.map { case (name, info) => {
+      sources.map { case (name, info) =>
         info.lifeType match {
           case TableLifeType.Table => sourceTableList += name
           case _ => {
@@ -66,7 +68,6 @@ class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var logi
             info.sourceTableList.map(x => sourceTableList += x)
           }
         }
-      }
       }
     }
     sourceTableList
