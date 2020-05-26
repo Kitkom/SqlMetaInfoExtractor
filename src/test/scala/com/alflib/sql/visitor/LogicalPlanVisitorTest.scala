@@ -27,6 +27,7 @@ class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
     CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
     GlobalMetaInfo.cleanUp
     assert(GlobalMetaInfo.getSources.size == 5)
+    assert(GlobalMetaInfo.queryUnitInfoList.size == 6)
   }
   
   test("Basic function: Get table list: create temporary views and tables") {
@@ -46,6 +47,7 @@ class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
     CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
     GlobalMetaInfo.cleanUp
     assert(GlobalMetaInfo.getSources.size == 3)
+    assert(GlobalMetaInfo.queryUnitInfoList.size == 2)
   }
   
   test("Basic function: Get table list: table lineage") {
@@ -55,7 +57,7 @@ class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
          select cA, cB, cC
            from dC.tE
            join dC.tF
-          where cD in (select cD from dD.tG);
+          where cD in (select cD from dD.tG where cE in (1, 2));
        
        create temporary view tvA as
          select cA, cB, cC
@@ -74,7 +76,9 @@ class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
     GlobalMetaInfo.clear
     CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
     GlobalMetaInfo.cleanUp
-    //assert(GlobalMetaInfo.getQueryUnitInfo(TableID.convertArgString("tZ")).getSourceTables.size == 4)
+    assert(GlobalMetaInfo.getQueryUnitInfo(TableID.convertArgString("tZ")).getSourceTables.size == 5)
+    assert(GlobalMetaInfo.getQueryUnitInfo(TableID.convertArgString("tY")).getSourceTables.size == 3)
+    assert(GlobalMetaInfo.queryUnitInfoList.size == 5)
   }
   
 }

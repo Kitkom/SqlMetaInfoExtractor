@@ -3,6 +3,7 @@ package com.alflib.sql.utils
 import com.alflib.sql.exception.ExtractorErrorException
 import org.apache.spark.sql.catalyst.IdentifierWithDatabase
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
+import org.apache.spark.sql.catalyst.trees.TreeNode
 
 import scala.collection.mutable.{ListBuffer, Map}
 
@@ -35,37 +36,34 @@ case class ColumnID (var table: Option[TableID], val column: String) {
   def setTable(table:TableID) = {this.table=Option(table)}
 }
 
-class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var logicalPlan : Project = null) {
-  var columns = Map[ColumnID, String]()
+class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var node : TreeNode[_] = null) {
   var sources = Map[TableID, QueryUnitInfo]()
-  def addColumns(cols: List[String]) = cols.map(x=>addColumn(x))
-  def addColumn(col: String) = columns(new ColumnID(id, col)) = null
-  def addSource(tblInfo: QueryUnitInfo) : Unit = {sources(tblInfo.id) = tblInfo}
+  def addSource(tblId: TableID) : Unit = {if (id != tblId) sources(tblId) = GlobalMetaInfo.getQueryUnitInfo(tblId)}
   override def toString() = {
     s"""
       | ========QueryUnitInfo=========
       | [$id]
       | lifeType     = ${lifeType.toString}
-      | columns      = (${columns.toList})
       | sources      = (${sources.keys})
-      | sourceTables = (${getSourceTables()})
       | ==============================
     """.stripMargin
   }
   
-  
+  //| sourceTables = (${getSourceTables()})
   
   val sourceTableList = ListBuffer[TableID]()
   var sourceResolved = false
+  
   def getSourceTables() : ListBuffer[TableID] = {
     if (!sourceResolved) {
       sourceResolved = true
       sources.map { case (name, info) =>
-        info.lifeType match {
-          case TableLifeType.Table => sourceTableList += name
-          case _ => {
-            if (info.sourceTableList.isEmpty) info.getSourceTables
-            info.sourceTableList.map(x => sourceTableList += x)
+        if (info == null)
+          sourceTableList += name
+        else {
+          info.lifeType match {
+            case TableLifeType.Table => sourceTableList += name
+            case _ => info.getSourceTables.map(x => sourceTableList += x)
           }
         }
       }

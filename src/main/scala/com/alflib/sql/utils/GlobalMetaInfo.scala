@@ -3,7 +3,8 @@ package com.alflib.sql.utils
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project, SubqueryAlias}
 import org.apache.spark.sql.execution.command.CreateViewCommand
-import com.alflib.sql.utils.TableLifeType.{Table, Unknown, Local}
+import com.alflib.sql.utils.TableLifeType.{Local, Table, Unknown}
+import org.apache.spark.sql.catalyst.trees.TreeNode
 
 import scala.collection.mutable.{ListBuffer, Map}
 
@@ -12,29 +13,50 @@ object GlobalMetaInfo {
   val logger: Logger=Logger.getLogger(getClass)
   
   var sourceTableList = ListBuffer[TableID]()
-  var targetedQueryUnitInfoMap = Map[TableID, QueryUnitInfo]()
-  var untargetedQueryUnitInfoMap = Map[Project, QueryUnitInfo]()
+  val queryUnitInfoList = ListBuffer[QueryUnitInfo]()
+  var idToQueryUnitInfoMap = Map[TableID, QueryUnitInfo]()
+  var nodeToQueryUnitInfoMap = Map[TreeNode[_], QueryUnitInfo]()
+  var visitedProject = Map[Project, Boolean]()
   var errors = Map[String, Exception]()
   
-  def getQueryUnitInfo(tblID: TableID, lifeType: TableLifeType.Value = Unknown, logicalPlan: Project = null) = {
-    if (!targetedQueryUnitInfoMap.contains(tblID))
-      targetedQueryUnitInfoMap(tblID) = new QueryUnitInfo(tblID, lifeType)
-    val info = targetedQueryUnitInfoMap(tblID)
+  
+  def queryUnitInfo(tblID: TableID, lifeType: TableLifeType.Value = Unknown, node: TreeNode[_] = null) = {
+    if (!idToQueryUnitInfoMap.contains(tblID)) {
+      val info = new QueryUnitInfo(tblID, lifeType)
+      logger.debug(s"new unit named ${tblID}")
+      queryUnitInfoList += info
+      idToQueryUnitInfoMap(tblID) = info
+    }
+    val info = idToQueryUnitInfoMap(tblID)
     if (info.lifeType == Unknown)
       info.lifeType = lifeType
-    if (info.logicalPlan == null)
-      info.logicalPlan = logicalPlan
+    if (info.node == null) {
+      info.node = node
+      nodeToQueryUnitInfoMap(node) = info
+    }
     info
   }
   
-  def checkProjectRegistered(plan: Project) = {
-    targetedQueryUnitInfoMap.values.map(x => x.logicalPlan).toList.contains(plan) || untargetedQueryUnitInfoMap.keys.toList.contains(plan)
+  def checkProjectVisited(node: Project) = visitedProject.contains(node)
+  
+  def setProjectVisited(node: Project) = {
+    logger.debug("set visited")
+    visitedProject(node) = true
   }
   
-  def getQueryUnitInfo(plan: Project) = {
-    if (!untargetedQueryUnitInfoMap.contains(plan))
-      untargetedQueryUnitInfoMap(plan) = new QueryUnitInfo(new TableID("untargeted", untargetedQueryUnitInfoMap.keys.size.toString), Local, plan)
-    untargetedQueryUnitInfoMap(plan)
+  def getQueryUnitInfo(tblID: TableID) = {
+    idToQueryUnitInfoMap.getOrElse(tblID, null)
+  }
+  
+  def getQueryUnitInfo(node: TreeNode[_]) : QueryUnitInfo = {
+    if (!nodeToQueryUnitInfoMap.contains(node)) {
+      val info = new QueryUnitInfo(new TableID(None, "__anonymous__" + nodeToQueryUnitInfoMap.keys.size.toString), Local, node)
+      logger.debug(s"new unit named ${info.id}")
+      queryUnitInfoList += info
+      nodeToQueryUnitInfoMap(node) = info
+      idToQueryUnitInfoMap(info.id) = info
+    }
+    nodeToQueryUnitInfoMap(node)
   }
   
   def resolveQueryUnits() = {
@@ -42,27 +64,30 @@ object GlobalMetaInfo {
     // <TBD>
     
     // set unkown units to Table
-    targetedQueryUnitInfoMap.values.map(x => if (x.lifeType==Unknown) x.lifeType = Table)
+    idToQueryUnitInfoMap.values.map(x => if (x.lifeType==Unknown) x.lifeType = Table)
     
     // resolve * columns
   }
   
   def clear = {
     sourceTableList.clear
-    targetedQueryUnitInfoMap.clear
-    untargetedQueryUnitInfoMap.clear
+    idToQueryUnitInfoMap.clear
+    nodeToQueryUnitInfoMap.clear
+    queryUnitInfoList.clear
     errors.clear
   }
   
   def cleanUp = {
     resolveQueryUnits()
     logger.debug(sourceTableList)
-    logger.debug(targetedQueryUnitInfoMap.values)
-    logger.debug(untargetedQueryUnitInfoMap.values)
+    //logger.debug(idToQueryUnitInfoMap.values)
+    logger.debug(queryUnitInfoList)
     if (!errors.isEmpty) logger.error(errors)
   }
   
   def getSources = {
-      targetedQueryUnitInfoMap.values.filter(x=>x.lifeType==Table).map(x=>x.id.toString).toList.distinct
+    val sources = ListBuffer[TableID]()
+    queryUnitInfoList.map(info=> info.getSourceTables().map(x=>sources+=x))
+    sources.filterNot(x=>idToQueryUnitInfoMap.contains(x)).toList.distinct
   }
 }

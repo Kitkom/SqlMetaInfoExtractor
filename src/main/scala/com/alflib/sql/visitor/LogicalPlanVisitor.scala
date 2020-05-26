@@ -13,7 +13,7 @@ object LogicalPlanVisitor {
   val logger: Logger=Logger.getLogger(getClass)
   
   def visit(node: TreeNode[_], extract: (TreeNode[_]) => Unit, stopList: List[String] = List.empty) : Unit = {
-    logger.debug(s"Visiting logical node: ${node.nodeName}")
+    logger.debug(s"Visiting logical node in ${if (stopList.isEmpty) "Global\t" else "Local\t"}: ${node.nodeName}")
     extract(node)
     if (!stopList.contains(node.nodeName)) {
       node.nodeName match {
