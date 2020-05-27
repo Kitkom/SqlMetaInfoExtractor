@@ -36,6 +36,7 @@ case class ColumnID (var table: Option[TableID], val column: String) {
   def setTable(table:TableID) = {this.table=Option(table)}
 }
 
+/*
 class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var node : TreeNode[_] = null) {
   var sources = Map[TableID, QueryUnitInfo]()
   def addSource(tblId: TableID) : Unit = {if (id != tblId) sources(tblId) = GlobalMetaInfo.getQueryUnitInfo(tblId)}
@@ -45,6 +46,9 @@ class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var node
       | [$id]
       | lifeType     = ${lifeType.toString}
       | sources      = (${sources.keys})
+      |    ========node=========
+      |    ${node}
+      |    ========node=========
       | ==============================
     """.stripMargin
   }
@@ -52,11 +56,11 @@ class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var node
   //| sourceTables = (${getSourceTables()})
   
   val sourceTableList = ListBuffer[TableID]()
-  var sourceResolved = false
+  var lineageResolved = false
   
   def getSourceTables() : ListBuffer[TableID] = {
-    if (!sourceResolved) {
-      sourceResolved = true
+    if (!lineageResolved) {
+      lineageResolved = true
       sources.map { case (name, info) =>
         if (info == null)
           sourceTableList += name
@@ -72,3 +76,4 @@ class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var node
   }
   
 }
+*/

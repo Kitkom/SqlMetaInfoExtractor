@@ -14,17 +14,18 @@ object Extractors {
       GlobalMetaInfo.sourceTableList += TableID.convertArgString(node.argString)
   }
   
-  def extractLocalSourceTable(tableInfo: QueryUnitInfo)(node: TreeNode[_]) : Unit = {
+  def extractLocalSourceTable(info: QueryUnitInfo)(node: TreeNode[_]) : Unit = {
     node.nodeName match {
       case "Project" => GlobalMetaInfo.setProjectVisited(node.asInstanceOf[Project])
-      case "ListQuery" => tableInfo.addSource(GlobalMetaInfo.getQueryUnitInfo(node).id)
-      case "UnresolvedRelation" => tableInfo.addSource(TableID.convertArgString(node.argString))
-      case "SubqueryAlias" => tableInfo.addSource(new TableID(node.asInstanceOf[SubqueryAlias].name))
+      case "ListQuery" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project").id)
+      case "Union" | "Except" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Merge").id)
+      case "UnresolvedRelation" => info.addSource(TableID.convertArgString(node.argString))
+      case "SubqueryAlias" => info.addSource(new TableID(node.asInstanceOf[SubqueryAlias].name))
       case _ => null
     }
   }
   
-  val LocalNodeStopList = List("SubqueryAlias", "ListQuery", "UnresolvedRelation")
+  val LocalNodeStopList = List("SubqueryAlias", "ListQuery", "UnresolvedRelation", "Union", "Except")
   
   def extractTableLineage(node: TreeNode[_]) : Unit = {
     node.nodeName match {
@@ -50,13 +51,17 @@ object Extractors {
       }
       case "ListQuery" => {
         val listquery = node.asInstanceOf[ListQuery]
-        val info = GlobalMetaInfo.getQueryUnitInfo(node)
+        val info = GlobalMetaInfo.queryUnitInfo(node, "Project")
         LogicalPlanVisitor.visit(listquery.plan, extractLocalSourceTable(info)(_), LocalNodeStopList)
+      }
+      case "Union" | "Except" => {
+        val info = GlobalMetaInfo.queryUnitInfo(node, "Merge")
+        node.asInstanceOf[LogicalPlan].children.map(child => LogicalPlanVisitor.visit(child, extractLocalSourceTable(info)(_), LocalNodeStopList))
       }
       case "Project" => {
         val project = node.asInstanceOf[Project]
         if (!GlobalMetaInfo.checkProjectVisited(project)) {
-          val info = GlobalMetaInfo.getQueryUnitInfo(project)
+          val info = GlobalMetaInfo.queryUnitInfo(project, "Project")
           //project.children.map(x => LogicalPlanVisitor.visit(x, extractLocalSourceTable(info)(_), LocalNodeStopList))
           LogicalPlanVisitor.visit(project, extractLocalSourceTable(info)(_), LocalNodeStopList)
           

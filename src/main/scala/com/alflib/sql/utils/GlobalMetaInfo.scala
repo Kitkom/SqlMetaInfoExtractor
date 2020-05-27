@@ -22,7 +22,7 @@ object GlobalMetaInfo {
   
   def queryUnitInfo(tblID: TableID, lifeType: TableLifeType.Value = Unknown, node: TreeNode[_] = null) = {
     if (!idToQueryUnitInfoMap.contains(tblID)) {
-      val info = new QueryUnitInfo(tblID, lifeType)
+      val info = new ProjectUnitInfo(tblID, lifeType)
       logger.debug(s"new unit named ${tblID}")
       queryUnitInfoList += info
       idToQueryUnitInfoMap(tblID) = info
@@ -48,9 +48,12 @@ object GlobalMetaInfo {
     idToQueryUnitInfoMap.getOrElse(tblID, null)
   }
   
-  def getQueryUnitInfo(node: TreeNode[_]) : QueryUnitInfo = {
+  def queryUnitInfo(node: TreeNode[_], unitType: String) : QueryUnitInfo = {
     if (!nodeToQueryUnitInfoMap.contains(node)) {
-      val info = new QueryUnitInfo(new TableID(None, "__anonymous__" + nodeToQueryUnitInfoMap.keys.size.toString), Local, node)
+      val info = unitType match {
+        case "Merge" => new MergeUnitInfo (queryUnitInfoList.size, node.nodeName, node)
+        case _ => new ProjectUnitInfo (new TableID (None, "__anonymous__" + queryUnitInfoList.size.toString), Local, node)
+      }
       logger.debug(s"new unit named ${info.id}")
       queryUnitInfoList += info
       nodeToQueryUnitInfoMap(node) = info
