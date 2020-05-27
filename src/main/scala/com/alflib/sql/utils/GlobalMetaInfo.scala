@@ -70,6 +70,7 @@ object GlobalMetaInfo {
     idToQueryUnitInfoMap.values.map(x => if (x.lifeType==Unknown) x.lifeType = Table)
     
     // resolve * columns
+    queryUnitInfoList.map(_.resolve)
   }
   
   def clear = {
