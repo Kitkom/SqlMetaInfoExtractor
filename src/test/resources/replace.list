@@ -1,10 +1,11 @@
-${scriptvar:pages} 1,2
-${hiveconf:JOB_DATE} '2020-01-01'
-${data_date} '2020-01-01'
-${hiveconf:SOURCE_TABLE} fake_source
-${scriptvar:target_table} fake_target
-${hiveconf:TARGET} fake_target
-<<BEG_DATE>> '2020-01-01'
-<<END_DATE>> '2020-01-01'
-<<BEG_DATE_NO_DASH>> '2020-01-01'
-<<END_DATE_NO_DASH>> '2020-01-01'
+# substitute left variables or placeholders with right
+${scriptvar:pages}	1,2
+${hiveconf:JOB_DATE}	'2020-01-01'
+${data_date}	'2020-01-01'
+${hiveconf:SOURCE_TABLE}	fake_source
+${scriptvar:target_table}	fake_target
+${hiveconf:TARGET}	fake_target
+<<BEG_DATE>>	'2020-01-01'
+<<END_DATE>>	'2020-01-01'
+<<BEG_DATE_NO_DASH>>	'2020-01-01'
+<<END_DATE_NO_DASH>>	'2020-01-01'

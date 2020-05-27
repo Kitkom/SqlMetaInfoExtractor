@@ -15,10 +15,11 @@ object CommonUtils {
   val logger: Logger=Logger.getLogger(getClass)
   
   val replaceList = Map[String, String]()
+  val replaceListSeparator = "\t"
   
   {
-    for (line <- Source.fromResource("replace.list").getLines) {
-      val d = line.split(' ')
+    for (line <- Source.fromResource("replace.list").getLines.filterNot(_.trim.startsWith("#"))) {
+      val d = line.split(replaceListSeparator)
       replaceList(d(0))=d(1)
     }
   }
