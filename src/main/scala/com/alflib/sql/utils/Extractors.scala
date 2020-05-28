@@ -1,8 +1,8 @@
 package com.alflib.sql.utils
 
 import com.alflib.sql.visitor.LogicalPlanVisitor
-import org.apache.spark.sql.catalyst.analysis.{UnresolvedAttribute, UnresolvedRelation, UnresolvedStar}
-import org.apache.spark.sql.catalyst.expressions.ListQuery
+import org.apache.spark.sql.catalyst.analysis.{UnresolvedAlias, UnresolvedAttribute, UnresolvedRelation, UnresolvedStar}
+import org.apache.spark.sql.catalyst.expressions.{Alias, ListQuery}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.trees.TreeNode
 import org.apache.spark.sql.execution.command.CreateViewCommand
@@ -16,7 +16,7 @@ object Extractors {
   
   def extractColumnSource(info: ColumnInfo)(node: TreeNode[_]) : Unit = {
     node.nodeName match {
-      case "UnresolvedAttribute" => info.addSource(new ColumnInfo(ColumnID.fromName(node.asInstanceOf[UnresolvedAttribute].name)))
+      case "UnresolvedAttribute" => info.addSource(ColumnID.fromName(node.asInstanceOf[UnresolvedAttribute].name))
       case _ =>
     }
   }
@@ -30,11 +30,12 @@ object Extractors {
         }
         list.map(col => {
           col.nodeName match {
-            case "UnresolvedStar" => {
-              info.addColumn(new ColumnInfo(ColumnID.fromName(col.asInstanceOf[UnresolvedStar].target.getOrElse(Seq("")).toList.mkString(".") + ".*")))
-            }
+            case "UnresolvedStar" => info.addColumn(new ColumnInfo(ColumnID.fromName(col.asInstanceOf[UnresolvedStar].target.getOrElse(Seq("")).toList.mkString(".") + ".*")))
             case _ => {
-              val colInfo = new ColumnInfo(ColumnID.fromName(col.name))
+              val name = if (("UnresolvedAlias").contains(col.nodeName) && (!("Alias").contains(col.nodeName)))
+                "__anonymous_column__"
+              else col.name
+              val colInfo = new ColumnInfo(ColumnID.fromName(name))
               info.addColumn(colInfo)
               col.children.map(child => LogicalPlanVisitor.visit(child, extractColumnSource(colInfo)(_), LocalNodeStopList))
             }
