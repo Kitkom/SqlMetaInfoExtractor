@@ -14,6 +14,7 @@ abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value,
        | ${getClass.getSimpleName} [$id]
        | lifeType     = ${lifeType.toString}
        | sources      = (${sources.keys})
+       | columns      = ${columns}\n
        | ==============================
     """.stripMargin
   }
@@ -38,6 +39,11 @@ abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value,
   def getSourceTables() : ListBuffer[TableID] = {
     resolve()
     sourceTableList
+  }
+  
+  val columns = ListBuffer[ColumnInfo]()
+  def addColumn(col: ColumnInfo) = {
+    columns += col
   }
 }
 

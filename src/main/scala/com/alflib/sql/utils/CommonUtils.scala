@@ -30,15 +30,17 @@ object CommonUtils {
     replaceList.map{case(key, value)=>{formatedSql = formatedSql.replace(key, value)}}
     formatedSql.split(";").map(it => {
       if (it.trim!="" && (!it.trim.startsWith("--"))) {
-        try {
+    //    try {
           val plan = sparkParser.parsePlan(it)
           logger.debug(plan)
           visit(plan)
+        /*
         }
         catch {
           case e : Exception => GlobalMetaInfo.errors(it.trim) = e
           case _ : Throwable => GlobalMetaInfo.errors(it.trim) = ExtractorErrorException("Unsupported query")
         }
+        */
       }
     })
   }

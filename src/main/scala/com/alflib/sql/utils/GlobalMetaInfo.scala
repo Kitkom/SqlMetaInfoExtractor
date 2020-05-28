@@ -52,7 +52,8 @@ object GlobalMetaInfo {
     if (!nodeToQueryUnitInfoMap.contains(node)) {
       val info = unitType match {
         case "Merge" => new MergeUnitInfo (queryUnitInfoList.size, node.nodeName, node)
-        case _ => new ProjectUnitInfo (new TableID (None, "__anonymous__" + queryUnitInfoList.size.toString), Local, node)
+        case "Project" => new ProjectUnitInfo (new TableID (None, "__anonymous__" + queryUnitInfoList.size.toString), Local, node)
+        case _ => null
       }
       logger.debug(s"new unit named ${info.id}")
       queryUnitInfoList += info

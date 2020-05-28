@@ -3,7 +3,7 @@ package com.alflib.sql.visitor
 import com.alflib.sql.utils.CommonUtils
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.expressions.{Expression, ListQuery}
-import org.apache.spark.sql.catalyst.plans.logical.{Filter, InsertIntoTable, LogicalPlan, With}
+import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.trees.TreeNode
 import org.apache.spark.sql.execution.command.CreateViewCommand
 
@@ -21,6 +21,7 @@ object LogicalPlanVisitor {
         case "With" => node.asInstanceOf[With].innerChildren.map(e => visit(e, extract))
         case "Filter" => visit(node.asInstanceOf[Filter].condition, extract, stopList)
         case "ListQuery" => visit(node.asInstanceOf[ListQuery].plan, extract, stopList)
+        case "Project" => node.asInstanceOf[Project].projectList.map(child => visit(child, extract, stopList))
         case _ => null
       }
       node.children.map(e => visit(e.asInstanceOf[TreeNode[_]], extract, stopList))

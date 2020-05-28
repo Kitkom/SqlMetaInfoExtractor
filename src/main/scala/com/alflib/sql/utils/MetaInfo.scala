@@ -12,7 +12,7 @@ object TableLifeType extends Enumeration {
 }
 
 object TableID {
-  def convertArgString(src: String) = {
+  def fromArgString(src: String) = {
     val list = src.replaceAll("`", "").split("\\.")
     if (list.size == 1)
       TableID(None, list(0))
@@ -29,11 +29,22 @@ case class TableID(val database: Option[String] = None, val table: String) {
   override def toString() = if (database == None) table else s"${database.get}.$table"
 }
 
+object ColumnID {
+  def fromName(name: String) = {
+    val nameParts = name.split("\\.")
+    nameParts.size match {
+      case 1 => ColumnID(None, nameParts(0))
+      case 2 => new ColumnID(new TableID(None, nameParts(0)), nameParts(1))
+      case _ => new ColumnID(new TableID(nameParts(0), nameParts(1)), nameParts(2))
+    }
+  }
+}
+
 case class ColumnID (var table: Option[TableID], val column: String) {
   def this(tbl: TableID, column: String) = this(Option(tbl), column)
-  override def toString() = {s"${table.toString}.$column"}
   def isResolved() = table==None
   def setTable(table:TableID) = {this.table=Option(table)}
+  override def toString() = if (table == None) column else s"${table.get}.$column"
 }
 
 /*

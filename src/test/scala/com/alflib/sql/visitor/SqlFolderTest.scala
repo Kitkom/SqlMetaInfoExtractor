@@ -11,8 +11,6 @@ object SqlFolderTest {
   
   val logger: Logger=Logger.getLogger(getClass)
   
-  
-  
   def main(args:Array[String]) : Unit = {
     if (args.size == 0) return
     val dirname = args(0)
