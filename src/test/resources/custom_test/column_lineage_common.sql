@@ -12,3 +12,5 @@ select
   cListQuery in (select * from dB.tB) as cE
   from dA.tA
   join dB.tB
+  join (select * from dC.tC) arias
+  where cListQueryFilter in (select * from dC.tC)

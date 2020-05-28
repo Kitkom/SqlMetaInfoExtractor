@@ -1,5 +1,6 @@
 package com.alflib.sql.utils
 
+import com.alflib.sql.exception.ExtractorErrorException
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project, SubqueryAlias}
 import org.apache.spark.sql.execution.command.CreateViewCommand
@@ -16,7 +17,7 @@ object GlobalMetaInfo {
   val queryUnitInfoList = ListBuffer[QueryUnitInfo]()
   var idToQueryUnitInfoMap = Map[TableID, QueryUnitInfo]()
   var nodeToQueryUnitInfoMap = Map[TreeNode[_], QueryUnitInfo]()
-  var visitedProject = Map[Project, Boolean]()
+  var visitedProject = Map[TreeNode[_], Boolean]()
   var errors = Map[String, Exception]()
   
   
@@ -37,10 +38,14 @@ object GlobalMetaInfo {
     info
   }
   
-  def checkProjectVisited(node: Project) = visitedProject.contains(node)
+  def checkProjectVisited(node: TreeNode[_]) = visitedProject.contains(node)
   
-  def setProjectVisited(node: Project) = {
+  def setProjectVisited(node: TreeNode[_]) = {
     logger.debug("set visited")
+    node.nodeName match {
+      case "Project"|"Aggregate"=>
+      case _ => throw ExtractorErrorException(s"${node.nodeName} not projection.")
+    }
     visitedProject(node) = true
   }
   

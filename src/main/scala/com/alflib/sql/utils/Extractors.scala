@@ -3,7 +3,7 @@ package com.alflib.sql.utils
 import com.alflib.sql.visitor.LogicalPlanVisitor
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedAttribute, UnresolvedRelation, UnresolvedStar}
 import org.apache.spark.sql.catalyst.expressions.ListQuery
-import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan, Project, SubqueryAlias}
+import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.trees.TreeNode
 import org.apache.spark.sql.execution.command.CreateViewCommand
 import org.apache.spark.sql.execution.datasources.CreateTable
@@ -23,9 +23,12 @@ object Extractors {
   
   def extractLocal(info: QueryUnitInfo)(node: TreeNode[_]) : Unit = {
     node.nodeName match {
-      case "Project" => {
-        val prj = node.asInstanceOf[Project]
-        prj.projectList.map(col => {
+      case "Project"|"Aggregate" => {
+        val list = node.nodeName match {
+          case "Project" => node.asInstanceOf[Project].projectList
+          case "Aggregate" => node.asInstanceOf[Aggregate].aggregateExpressions
+        }
+        list.map(col => {
           col.nodeName match {
             case "UnresolvedStar" => {
               info.addColumn(new ColumnInfo(ColumnID.fromName(col.asInstanceOf[UnresolvedStar].target.getOrElse(Seq("")).toList.mkString(".") + ".*")))
@@ -37,17 +40,30 @@ object Extractors {
             }
           }
         })
-        GlobalMetaInfo.setProjectVisited(prj)
+        GlobalMetaInfo.setProjectVisited(node)
       }
-      case "ListQuery" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project").id)
-      case "Union" | "Except" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Merge").id)
-      case "UnresolvedRelation" => info.addSource(TableID.fromArgString(node.argString))
-      case "SubqueryAlias" => info.addSource(new TableID(node.asInstanceOf[SubqueryAlias].name))
+      case "ListQuery" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project").id, false)
+      case "Union" | "Except" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Merge").id, true)
+      case "UnresolvedRelation" => info.addSource(TableID.fromArgString(node.argString), true)
+      case "SubqueryAlias" => info.addSource(new TableID(node.asInstanceOf[SubqueryAlias].name), true)
       case _ =>
     }
   }
   
-  val LocalNodeStopList = List("SubqueryAlias", "ListQuery", "UnresolvedRelation", "Union", "Except")
+  def extractMergeLocal(info: QueryUnitInfo)(node: TreeNode[_]) : Unit = {
+    node.nodeName match {
+      case "Project" | "Aggregate" => {
+        info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project").id, true)
+      }
+      case "ListQuery" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project").id, false)
+      case "Union" | "Except" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Merge").id, true)
+      case "UnresolvedRelation" => info.addSource(TableID.fromArgString(node.argString), true)
+      case "SubqueryAlias" => info.addSource(new TableID(node.asInstanceOf[SubqueryAlias].name), true)
+      case _ =>
+    }
+  }
+  
+  val LocalNodeStopList = Seq("SubqueryAlias", "ListQuery", "UnresolvedRelation", "Union", "Except")
   
   def extractTableLineage(node: TreeNode[_]) : Unit = {
     node.nodeName match {
@@ -78,14 +94,13 @@ object Extractors {
       }
       case "Union" | "Except" => {
         val info = GlobalMetaInfo.queryUnitInfo(node, "Merge")
-        node.asInstanceOf[LogicalPlan].children.map(child => LogicalPlanVisitor.visit(child, extractLocal(info)(_), LocalNodeStopList))
+        node.asInstanceOf[LogicalPlan].children.map(child => LogicalPlanVisitor.visit(child, extractMergeLocal(info)(_), LocalNodeStopList :+ "Project" :+ "Aggregate"))
       }
-      case "Project" => {
-        val project = node.asInstanceOf[Project]
-        if (!GlobalMetaInfo.checkProjectVisited(project)) {
-          val info = GlobalMetaInfo.queryUnitInfo(project, "Project")
+      case "Project" | "Aggregate" => {
+        if (!GlobalMetaInfo.checkProjectVisited(node)) {
+          val info = GlobalMetaInfo.queryUnitInfo(node, "Project")
           //project.children.map(x => LogicalPlanVisitor.visit(x, extractLocalSourceTable(info)(_), LocalNodeStopList))
-          LogicalPlanVisitor.visit(project, extractLocal(info)(_), LocalNodeStopList)
+          LogicalPlanVisitor.visit(node, extractLocal(info)(_), LocalNodeStopList)
         }
       }
       case _ =>

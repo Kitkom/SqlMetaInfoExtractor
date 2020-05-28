@@ -16,13 +16,13 @@ object SqlFolderTest {
     val dirname = args(0)
     val filelist = new File(dirname).listFiles().filterNot(_.isDirectory).map(_.getPath)
     filelist.map(file => {
+      logger.info(s"File ${file}, source list:")
       val sql = new StringBuilder
       for (line<-Source.fromFile(file, "utf-8").getLines)
         sql.append(s"$line\n")
       GlobalMetaInfo.clear
       CommonUtils.visitMultipleSqls(sql.toString, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
       GlobalMetaInfo.cleanUp
-      logger.info(s"File ${file}, source list:")
       logger.info(GlobalMetaInfo.getSources)
     })
   }
@@ -39,11 +39,8 @@ object SqlFileTest {
     val file = args(0)
     logger.info(s"Parsing file ${file}")
     
-    val sql = new StringBuilder
-    for (line<-Source.fromFile(file, "utf-8").getLines)
-      sql.append(line)
     GlobalMetaInfo.clear
-    CommonUtils.visitMultipleSqls(sql.toString, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
+    CommonUtils.visitFile(file, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
     GlobalMetaInfo.cleanUp
     logger.info(s"File ${file}, source list:")
     logger.info(GlobalMetaInfo.getSources)
