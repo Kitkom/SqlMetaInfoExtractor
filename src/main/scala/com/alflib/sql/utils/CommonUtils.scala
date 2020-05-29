@@ -17,12 +17,21 @@ object CommonUtils {
   
   val replaceList = Map[String, String]()
   val replaceListSeparator = "\t"
+  val tableSchemas = Map[TableID, TableSchema]()
   
   {
     for (line <- Source.fromResource("replace.list").getLines.filterNot(_.trim.startsWith("#"))) {
       val d = line.split(replaceListSeparator)
       replaceList(d(0))=d(1)
     }
+  }
+  
+  def getTableSchema(id: TableID) = {
+    if (!tableSchemas.contains(id)) {
+      tableSchemas(id) = new TableSchema(id)
+      // query external metadata storage
+    }
+    tableSchemas(id)
   }
   
   def visitFile(path: String, visitor: (LogicalPlan) => Unit) : Unit = {
@@ -40,17 +49,15 @@ object CommonUtils {
     replaceList.map{case(key, value)=>{formatedSql = formatedSql.replace(key, value)}}
     formatedSql.split(";").map(it => {
       if (it.trim!="") {
-    //    try {
+        try {
           val plan = sparkParser.parsePlan(it)
           logger.debug(plan)
           visitor(plan)
-        /*
         }
         catch {
           case e : Exception => GlobalMetaInfo.errors(it.trim) = e
           case _ : Throwable => GlobalMetaInfo.errors(it.trim) = ExtractorErrorException("Unsupported query")
         }
-        */
       }
     })
   }

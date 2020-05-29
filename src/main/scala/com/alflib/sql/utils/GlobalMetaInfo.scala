@@ -88,7 +88,12 @@ object GlobalMetaInfo {
   }
   
   def cleanUp = {
-    resolveQueryUnits()
+    try {
+      resolveQueryUnits()
+    }
+    catch {
+      case e : ExtractorErrorException => errors(s"__on_clean_up__${errors.size}") = e
+    }
     logger.debug(sourceTableList)
     //logger.debug(idToQueryUnitInfoMap.values)
     logger.debug(queryUnitInfoList)
@@ -97,7 +102,10 @@ object GlobalMetaInfo {
   
   def getSources = {
     val sources = ListBuffer[TableID]()
-    queryUnitInfoList.map(info=> info.getSourceTables().map(x=>sources+=x))
+    /*
+    queryUnitInfoList.map(info => info.getSourceTables().map(x=>sources+=x))
     sources.filterNot(x=>idToQueryUnitInfoMap.contains(x)).toList.distinct
+    */
+    queryUnitInfoList.filter(_.lifeType==TableLifeType.Table).map(info => info.id)
   }
 }

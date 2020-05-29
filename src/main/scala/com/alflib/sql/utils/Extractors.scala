@@ -30,14 +30,16 @@ object Extractors {
         }
         list.map(col => {
           col.nodeName match {
-            case "UnresolvedStar" => info.addColumn(new ColumnInfo(ColumnID.fromName(col.asInstanceOf[UnresolvedStar].target.getOrElse(Seq("")).toList.mkString(".") + ".*")))
+            case "UnresolvedStar" => info.addColumn(new ColumnInfo(ColumnID.fromName(col.asInstanceOf[UnresolvedStar].target.getOrElse(Seq()).toList.map(_+".").mkString("") + "*")))
             case _ => {
-              val name = if (("UnresolvedAlias").contains(col.nodeName) && (!("Alias").contains(col.nodeName)))
-                "__anonymous_column__"
-              else col.name
-              val colInfo = new ColumnInfo(ColumnID.fromName(name))
+              val name = if (("UnresolvedAlias").contains(col.nodeName) && (!("Alias").contains(col.nodeName)))"__anonymous_column__" else col.name
+              val colID = ColumnID.fromName(name)
+              val colInfo = new ColumnInfo(ColumnID.fromName(colID.column))
               info.addColumn(colInfo)
-              col.children.map(child => LogicalPlanVisitor.visit(child, extractColumnSource(colInfo)(_), LocalNodeStopList))
+              if (col.children.isEmpty)
+                colInfo.addSource(colID)
+              else
+                col.children.map(child => LogicalPlanVisitor.visit(child, extractColumnSource(colInfo)(_), LocalNodeStopList))
             }
           }
         })
@@ -85,7 +87,11 @@ object Extractors {
       }
       case "SubqueryAlias" => {
         val subquery = node.asInstanceOf[SubqueryAlias]
-        val info = GlobalMetaInfo.queryUnitInfo(new TableID(subquery.name), TableLifeType.SubQueryAias, subquery)
+        val info = GlobalMetaInfo.queryUnitInfo(
+          new TableID(subquery.name),
+          if (subquery.child.nodeName == "UnresolvedRelation")  TableLifeType.DirectAlias else TableLifeType.SubQueryAlias ,
+          subquery
+        )
         LogicalPlanVisitor.visit(subquery.child, extractLocal(info)(_), LocalNodeStopList)
       }
       case "ListQuery" => {

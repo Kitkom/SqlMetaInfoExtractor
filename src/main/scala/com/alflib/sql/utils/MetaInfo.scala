@@ -8,7 +8,7 @@ import org.apache.spark.sql.catalyst.trees.TreeNode
 import scala.collection.mutable.{ListBuffer, Map}
 
 object TableLifeType extends Enumeration {
-  val Table, TempView, SubQueryAias, Local, Unknown = Value
+  val Table, TempView, SubQueryAlias, DirectAlias, Local, Unknown = Value
 }
 
 object TableID {
@@ -23,7 +23,7 @@ object TableID {
   }
 }
 
-case class TableID(val database: Option[String] = None, val table: String) {
+case class TableID(var database: Option[String] = None, var table: String) {
   def this(database: String, table: String) = this(Option(database), table)
   def this(src: IdentifierWithDatabase) = this(src.database, src.identifier)
   override def toString() = if (database == None) table else s"${database.get}.$table"
