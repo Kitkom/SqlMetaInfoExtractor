@@ -1,7 +1,7 @@
 package com.alflib.sql.utils
 
 import com.alflib.sql.exception.ExtractorErrorException
-import org.apache.spark.sql.catalyst.IdentifierWithDatabase
+import org.apache.spark.sql.catalyst.{AliasIdentifier, IdentifierWithDatabase}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
 import org.apache.spark.sql.catalyst.trees.TreeNode
 
@@ -12,6 +12,9 @@ object TableLifeType extends Enumeration {
 }
 
 object TableID {
+  def fromID(id: IdentifierWithDatabase) = {
+    new TableID(id.database, id.identifier)
+  }
   def fromArgString(src: String) = {
     val list = src.replaceAll("`", "").split("\\.")
     if (list.size == 1)
@@ -25,7 +28,6 @@ object TableID {
 
 case class TableID(var database: Option[String] = None, var table: String) {
   def this(database: String, table: String) = this(Option(database), table)
-  def this(src: IdentifierWithDatabase) = this(src.database, src.identifier)
   override def toString() = if (database == None) table else s"${database.get}.$table"
 }
 

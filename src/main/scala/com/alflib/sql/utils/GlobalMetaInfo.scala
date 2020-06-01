@@ -5,6 +5,7 @@ import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project, SubqueryAlias}
 import org.apache.spark.sql.execution.command.CreateViewCommand
 import com.alflib.sql.utils.TableLifeType.{Local, Table, Unknown}
+import org.apache.spark.sql.catalyst.IdentifierWithDatabase
 import org.apache.spark.sql.catalyst.trees.TreeNode
 
 import scala.collection.mutable.{ListBuffer, Map}
@@ -20,7 +21,8 @@ object GlobalMetaInfo {
   var visitedProject = Map[TreeNode[_], Boolean]()
   var errors = Map[String, Exception]()
   
-  
+  def queryUnitInfo(name: String) : QueryUnitInfo = queryUnitInfo(TableID.fromArgString(name))
+  def queryUnitInfo(id: IdentifierWithDatabase): QueryUnitInfo = queryUnitInfo(TableID.fromID(id))
   def queryUnitInfo(tblID: TableID, lifeType: TableLifeType.Value = Unknown, node: TreeNode[_] = null) = {
     if (!idToQueryUnitInfoMap.contains(tblID)) {
       val info = new ProjectUnitInfo(tblID, lifeType)
@@ -40,12 +42,14 @@ object GlobalMetaInfo {
   
   def checkProjectVisited(node: TreeNode[_]) = visitedProject.contains(node)
   
-  def setProjectVisited(node: TreeNode[_]) = {
+  def setNodeVisited(node: TreeNode[_]) = {
     logger.debug("set visited")
+    /*
     node.nodeName match {
       case "Project"|"Aggregate"=>
       case _ => throw ExtractorErrorException(s"${node.nodeName} not projection.")
     }
+    */
     visitedProject(node) = true
   }
   
@@ -88,6 +92,10 @@ object GlobalMetaInfo {
   }
   
   def cleanUp = {
+    logger.debug(queryUnitInfoList)
+    logger.debug("====================================================================================")
+    logger.debug("=======================================DEBUG========================================")
+    logger.debug("====================================================================================")
     try {
       resolveQueryUnits()
     }

@@ -8,7 +8,7 @@ import scala.collection.mutable.{ListBuffer, Map}
 abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var node : TreeNode[_] = null) {
   var directSources = ListBuffer[TableID]()
   var sources = Map[TableID, QueryUnitInfo]()
-  def addSource(tblId: TableID, isDirect: Boolean)
+  def addSource(info: QueryUnitInfo, isDirect: Boolean)
   override def toString() = {
     s"""
        | ========QueryUnitInfo=========
@@ -44,11 +44,11 @@ abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value,
 
 class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : TreeNode[_] = null)
   extends QueryUnitInfo(id, lifetype, node) {
-  def addSource(tblId: TableID, isDirect: Boolean) : Unit = {
-    if (id != tblId) {
+  def addSource(info: QueryUnitInfo, isDirect: Boolean) : Unit = {
+    if (this != info) {
       if (isDirect)
-        directSources += tblId
-      sources(tblId) = GlobalMetaInfo.queryUnitInfo(tblId)
+        directSources += info.id
+      sources(info.id) = info
     }
   }
   def resolve() : Unit = {
@@ -119,11 +119,11 @@ class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : Tre
 
 class MergeUnitInfo(val number: Int, val mergeType: String, node : TreeNode[_])
   extends QueryUnitInfo(new TableID(s"__merge__${mergeType}__", number.toString), TableLifeType.Local, node) {
-  def addSource(tblId: TableID, isDirect: Boolean) : Unit = {
-    if (id != tblId) {
+  def addSource(info: QueryUnitInfo, isDirect: Boolean) : Unit = {
+    if (this != info) {
       if (sources.size < 2) {
-        sources(tblId) = GlobalMetaInfo.getQueryUnitInfo(tblId)
-        directSources += tblId
+        sources(info.id) = info
+        directSources += info.id
       }
       else
         throw ExtractorErrorException(s"MergeUnit ${id} has more than 2 sources.")

@@ -43,12 +43,25 @@ object Extractors {
             }
           }
         })
-        GlobalMetaInfo.setProjectVisited(node)
+        GlobalMetaInfo.setNodeVisited(node)
       }
-      case "ListQuery" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project").id, false)
-      case "Union" | "Except" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Merge").id, true)
-      case "UnresolvedRelation" => info.addSource(TableID.fromArgString(node.argString), true)
-      case "SubqueryAlias" => info.addSource(new TableID(node.asInstanceOf[SubqueryAlias].name), true)
+      case "Generate" => {
+        val generate = node.asInstanceOf[Generate]
+        if (!GlobalMetaInfo.checkProjectVisited(generate)) {
+          GlobalMetaInfo.setNodeVisited(generate)
+          val gInfo = GlobalMetaInfo.queryUnitInfo(generate, "Project")
+          info.addSource(gInfo, true)
+          generate.generatorOutput.map(x => {
+            val colInfo = new ColumnInfo(ColumnID.fromName(x.name))
+            LogicalPlanVisitor.visit(generate.generator, extractColumnSource(colInfo)(_), LocalNodeStopList)
+            gInfo.addColumn(colInfo)
+          })
+        }
+      }
+      case "ListQuery" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project"), false)
+      case "Union" | "Except" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Merge"), true)
+      case "UnresolvedRelation" => info.addSource(GlobalMetaInfo.queryUnitInfo(node.argString), true)
+      case "SubqueryAlias" => info.addSource(GlobalMetaInfo.queryUnitInfo(node.asInstanceOf[SubqueryAlias].name), true)
       case _ =>
     }
   }
@@ -56,12 +69,12 @@ object Extractors {
   def extractMergeLocal(info: QueryUnitInfo)(node: TreeNode[_]) : Unit = {
     node.nodeName match {
       case "Project" | "Aggregate" => {
-        info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project").id, true)
+        info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project"), true)
       }
-      case "ListQuery" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project").id, false)
-      case "Union" | "Except" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Merge").id, true)
-      case "UnresolvedRelation" => info.addSource(TableID.fromArgString(node.argString), true)
-      case "SubqueryAlias" => info.addSource(new TableID(node.asInstanceOf[SubqueryAlias].name), true)
+      case "ListQuery" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Project"), false)
+      case "Union" | "Except" => info.addSource(GlobalMetaInfo.queryUnitInfo(node, "Merge"), true)
+      case "UnresolvedRelation" => info.addSource(GlobalMetaInfo.queryUnitInfo(node.argString), true)
+      case "SubqueryAlias" => info.addSource(GlobalMetaInfo.queryUnitInfo(node.asInstanceOf[SubqueryAlias].name), true)
       case _ =>
     }
   }
@@ -72,12 +85,12 @@ object Extractors {
     node.nodeName match {
       case "CreateTable" => {
         val create = node.asInstanceOf[CreateTable]
-        val info = GlobalMetaInfo.queryUnitInfo(new TableID(create.tableDesc.identifier), TableLifeType.Table, create)
+        val info = GlobalMetaInfo.queryUnitInfo(TableID.fromID(create.tableDesc.identifier), TableLifeType.Table, create)
         create.children.map(child => LogicalPlanVisitor.visit(child, extractLocal(info)(_), LocalNodeStopList))
       }
       case "CreateViewCommand" => {
         val create = node.asInstanceOf[CreateViewCommand]
-        val info = GlobalMetaInfo.queryUnitInfo(new TableID(create.name), TableLifeType.TempView, create)
+        val info = GlobalMetaInfo.queryUnitInfo(TableID.fromID(create.name), TableLifeType.TempView, create)
         LogicalPlanVisitor.visit(create.child, extractLocal(info)(_), LocalNodeStopList)
       }
       case "InsertIntoTable" => {
@@ -88,7 +101,7 @@ object Extractors {
       case "SubqueryAlias" => {
         val subquery = node.asInstanceOf[SubqueryAlias]
         val info = GlobalMetaInfo.queryUnitInfo(
-          new TableID(subquery.name),
+          TableID.fromID(subquery.name),
           if (subquery.child.nodeName == "UnresolvedRelation")  TableLifeType.DirectAlias else TableLifeType.SubQueryAlias ,
           subquery
         )
@@ -98,6 +111,11 @@ object Extractors {
         val listquery = node.asInstanceOf[ListQuery]
         val info = GlobalMetaInfo.queryUnitInfo(node, "Project")
         LogicalPlanVisitor.visit(listquery.plan, extractLocal(info)(_), LocalNodeStopList)
+      }
+      case "Generate" => {
+        val generate = node.asInstanceOf[Generate]
+        val info = GlobalMetaInfo.queryUnitInfo(generate, "Project")
+        LogicalPlanVisitor.visit(generate.child, extractLocal(info)(_), LocalNodeStopList)
       }
       case "Union" | "Except" => {
         val info = GlobalMetaInfo.queryUnitInfo(node, "Merge")
