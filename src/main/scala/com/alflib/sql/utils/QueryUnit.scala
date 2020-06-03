@@ -8,14 +8,15 @@ import scala.collection.mutable.{ListBuffer, Map}
 abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value, var node : TreeNode[_] = null) {
   var directSources = ListBuffer[TableID]()
   var sources = Map[TableID, QueryUnitInfo]()
-  def addSource(info: QueryUnitInfo, isDirect: Boolean)
+  def addSource(info: QueryUnitInfo, isDirect: Boolean) : Unit = addSource(info.id, info, isDirect)
+  def addSource(id: TableID, info: QueryUnitInfo, isDirect: Boolean) : Unit
   override def toString() = {
     s"""
        | ========QueryUnitInfo=========
        | ${getClass.getSimpleName} [$id]
        | lifeType     = ${lifeType.toString}
        | directSources= ${directSources})
-       | sources      = ${sources.keys})
+       | sources      = ${sources.map{case(k,v)=>k->(if (v==null) "null" else v.id)}})
        | columns      = ${columns}\n
        | ==============================
     """.stripMargin
@@ -27,7 +28,7 @@ abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value,
   def resolve() : Unit
   def getSourceTables() : ListBuffer[TableID] = {
     lifeType match {
-      case TableLifeType.Table => ListBuffer(id)
+      case TableLifeType.External => ListBuffer(id)
       case _ => {
         resolve()
         sourceTableList
@@ -44,20 +45,19 @@ abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value,
 
 class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : TreeNode[_] = null)
   extends QueryUnitInfo(id, lifetype, node) {
-  def addSource(info: QueryUnitInfo, isDirect: Boolean) : Unit = {
+  def addSource(id: TableID, info: QueryUnitInfo, isDirect: Boolean) : Unit = {
     if (this != info) {
       if (isDirect)
-        directSources += info.id
-      sources(info.id) = info
+        directSources += id
+      sources(id) = info
     }
   }
   def resolve() : Unit = {
     if (!lineageResolved) {
       // table lineage
       lineageResolved = true
-      sources.map { case (name, info) =>
-        if (info == null)
-          sourceTableList += name
+      sources.map { case (name, info) => // here, no sources should be null
+        if (info.lifeType == TableLifeType.External) sourceTableList += name
         else info.getSourceTables.map(x => sourceTableList += x)
       }
       
@@ -80,11 +80,11 @@ class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : Tre
               srcCol.table = Option(directSources(0))
             }
             else {  // multiple source
-              val possibleSources = directSources.map(sources(_)).filter(info => info.getColumns.contains(srcCol.column))
+              val possibleSources = directSources.filter(id => sources(id).getColumns.contains(srcCol.column))
               if (possibleSources.size == 0)
                 throw ExtractorErrorException(s"[$id]: Column '${srcCol.column}' not found in sources")
               else
-                srcCol.table = Option(possibleSources(0).id)
+                srcCol.table = Option(possibleSources(0))
             }
           }
           else if (!directSources.contains(srcCol.table.get)) {
@@ -102,7 +102,7 @@ class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : Tre
   }
   def getColumns() : ListBuffer[String] = {
     lifeType match {
-      case TableLifeType.Table => getSchema.getColumns
+      case TableLifeType.External => getSchema.getColumns
       case _ => {
         resolve()
         columns.map(x => x.id.column)
@@ -111,7 +111,7 @@ class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : Tre
   }
   def getSchema() : TableSchema = {
     lifeType match {
-      case TableLifeType.Table => CommonUtils.getTableSchema(id)
+      case TableLifeType.External => CommonUtils.getTableSchema(id)
       case _ => null
     }
   }
@@ -119,11 +119,11 @@ class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : Tre
 
 class MergeUnitInfo(val number: Int, val mergeType: String, node : TreeNode[_])
   extends QueryUnitInfo(new TableID(s"__merge__${mergeType}__", number.toString), TableLifeType.Local, node) {
-  def addSource(info: QueryUnitInfo, isDirect: Boolean) : Unit = {
+  def addSource(id: TableID, info: QueryUnitInfo, isDirect: Boolean) : Unit = {
     if (this != info) {
       if (sources.size < 2) {
-        sources(info.id) = info
-        directSources += info.id
+        sources(id) = info
+        directSources += id
       }
       else
         throw ExtractorErrorException(s"MergeUnit ${id} has more than 2 sources.")

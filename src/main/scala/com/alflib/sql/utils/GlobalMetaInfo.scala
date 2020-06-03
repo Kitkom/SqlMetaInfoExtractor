@@ -4,7 +4,7 @@ import com.alflib.sql.exception.ExtractorErrorException
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project, SubqueryAlias}
 import org.apache.spark.sql.execution.command.CreateViewCommand
-import com.alflib.sql.utils.TableLifeType.{Local, Table, Unknown}
+import com.alflib.sql.utils.TableLifeType.{Local, External, Unknown}
 import org.apache.spark.sql.catalyst.IdentifierWithDatabase
 import org.apache.spark.sql.catalyst.trees.TreeNode
 
@@ -21,9 +21,9 @@ object GlobalMetaInfo {
   var visitedProject = Map[TreeNode[_], Boolean]()
   var errors = Map[String, Exception]()
   
-  def queryUnitInfo(name: String) : QueryUnitInfo = queryUnitInfo(TableID.fromArgString(name))
-  def queryUnitInfo(id: IdentifierWithDatabase): QueryUnitInfo = queryUnitInfo(TableID.fromID(id))
-  def queryUnitInfo(tblID: TableID, lifeType: TableLifeType.Value = Unknown, node: TreeNode[_] = null) = {
+  def idToQueryUnitInfo(name: String) : QueryUnitInfo = idToQueryUnitInfo(TableID.fromArgString(name))
+  def idToQueryUnitInfo(id: IdentifierWithDatabase): QueryUnitInfo = idToQueryUnitInfo(TableID.fromID(id))
+  def idToQueryUnitInfo(tblID: TableID, lifeType: TableLifeType.Value = Unknown, node: TreeNode[_] = null) = {
     if (!idToQueryUnitInfoMap.contains(tblID)) {
       val info = new ProjectUnitInfo(tblID, lifeType)
       logger.debug(s"new unit named ${tblID}")
@@ -57,7 +57,7 @@ object GlobalMetaInfo {
     idToQueryUnitInfoMap.getOrElse(tblID, null)
   }
   
-  def queryUnitInfo(node: TreeNode[_], unitType: String) : QueryUnitInfo = {
+  def nodeToQueryUnitInfo(node: TreeNode[_], unitType: String) : QueryUnitInfo = {
     if (!nodeToQueryUnitInfoMap.contains(node)) {
       val info = unitType match {
         case "Merge" => new MergeUnitInfo (queryUnitInfoList.size, node.nodeName, node)
@@ -76,8 +76,11 @@ object GlobalMetaInfo {
     // query external database
     // <TBD>
     
+    // resolve null sources
+    queryUnitInfoList.map(x=>x.sources.filter{case(k,v)=>v==null}.keys.map(id=>x.sources(id)=idToQueryUnitInfo(id)))
+    
     // set unkown units to Table
-    idToQueryUnitInfoMap.values.map(x => if (x.lifeType==Unknown) x.lifeType = Table)
+    idToQueryUnitInfoMap.values.map(x => if (x.lifeType==Unknown) x.lifeType = External)
     
     // resolve * columns
     queryUnitInfoList.map(_.resolve)
@@ -92,6 +95,7 @@ object GlobalMetaInfo {
   }
   
   def cleanUp = {
+    logger.debug(idToQueryUnitInfoMap.keys)
     logger.debug(queryUnitInfoList)
     logger.debug("====================================================================================")
     logger.debug("==================================AFTER RESOLVING===================================")
@@ -114,6 +118,6 @@ object GlobalMetaInfo {
     queryUnitInfoList.map(info => info.getSourceTables().map(x=>sources+=x))
     sources.filterNot(x=>idToQueryUnitInfoMap.contains(x)).toList.distinct
     */
-    queryUnitInfoList.filter(_.lifeType==TableLifeType.Table).map(info => info.id)
+    queryUnitInfoList.filter(_.lifeType==TableLifeType.External).map(info => info.id)
   }
 }

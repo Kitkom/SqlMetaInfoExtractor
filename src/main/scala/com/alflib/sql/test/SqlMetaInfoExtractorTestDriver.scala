@@ -33,7 +33,7 @@ object SqlMetaInfoExtractorTestDriver {
     val sparkParser = new SparkSqlParser (new SQLConf)
     
     
-    val plan: LogicalPlan = sparkParser.parsePlan (sql)
+    //val plan: LogicalPlan = sparkParser.parsePlan (sql)
     //print(LogicalPlanVisitor.visit(plan, getTableList(_)).asInstanceOf[Seq[String]])
   }
   

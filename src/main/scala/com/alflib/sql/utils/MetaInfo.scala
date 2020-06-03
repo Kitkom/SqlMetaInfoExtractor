@@ -8,7 +8,7 @@ import org.apache.spark.sql.catalyst.trees.TreeNode
 import scala.collection.mutable.{ListBuffer, Map}
 
 object TableLifeType extends Enumeration {
-  val Table, TempView, SubQueryAlias, DirectAlias, Local, Unknown = Value
+  val External, TempView, SubQueryAlias, DirectAlias, Local, Unknown = Value
 }
 
 object TableID {
