@@ -1,16 +1,18 @@
+
+insert into table target_table
 select
   cAlias as cA,
   cPlus1 + cPlus2 as cB,
   case when cCase = 2
        then "2"
        when cCase = cPlus1 + cPlus2
-       then "Plus"
+       then cPlus2
        else "Else"
    end as cC,
   dA.tA.cA as cD,
-  dB.tB.*,
-  cListQuery in (select * from dB.tB) as cE
+  tB.*,
+  cListQuery in (select tX, tY, tZ from dB.tB) as cE
   from dA.tA
-  join dB.tB
-  join (select * from dC.tC) arias
+  join (select tX, tY, tZ from dB.tB) tB
+  join (select cAlias, cCase, cPlus1, cPlus2 from dC.tC) arias
   where cListQueryFilter in (select * from dC.tC)

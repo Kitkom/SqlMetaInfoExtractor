@@ -95,7 +95,7 @@ object Extractors {
       }
       case "InsertIntoTable" => {
         val insert = node.asInstanceOf[InsertIntoTable]
-        val info = GlobalMetaInfo.nodeToQueryUnitInfo(insert, "Project")
+        val info = GlobalMetaInfo.nodeToQueryUnitInfo(insert, "Insert")
         insert.children.map(child => LogicalPlanVisitor.visit(child, extractLocal(info)(_), LocalNodeStopList))
       }
       case "With" => {
@@ -104,7 +104,7 @@ object Extractors {
       }
       case "SubqueryAlias" => {
         val subquery = node.asInstanceOf[SubqueryAlias]
-        val info = GlobalMetaInfo.nodeToQueryUnitInfo(subquery, "project")
+        val info = GlobalMetaInfo.nodeToQueryUnitInfo(subquery, "Project")
         LogicalPlanVisitor.visit(subquery.child, extractLocal(info)(_), LocalNodeStopList)
       }
       case "ListQuery" => {

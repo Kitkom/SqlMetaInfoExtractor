@@ -37,8 +37,11 @@ abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value,
   }
   
   val columns = ListBuffer[ColumnInfo]()
+  val nameToColumn = Map[String, ColumnInfo]()
   def addColumn(col: ColumnInfo) = {
     columns += col
+    if (col.id.column != "*")
+      nameToColumn(col.id.column) = col
   }
   def getColumns() : ListBuffer[String]
 }

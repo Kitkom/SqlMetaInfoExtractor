@@ -2,10 +2,11 @@ package com.alflib.sql.utils
 
 import com.alflib.sql.exception.ExtractorErrorException
 import org.apache.log4j.Logger
-import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project, SubqueryAlias}
+import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan, Project, SubqueryAlias}
 import org.apache.spark.sql.execution.command.CreateViewCommand
-import com.alflib.sql.utils.TableLifeType.{Local, External, Unknown}
+import com.alflib.sql.utils.TableLifeType.{External, Local, Unknown}
 import org.apache.spark.sql.catalyst.IdentifierWithDatabase
+import org.apache.spark.sql.catalyst.analysis.{UnresolvedOrdinal, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.trees.TreeNode
 
 import scala.collection.mutable.{ListBuffer, Map}
@@ -62,6 +63,10 @@ object GlobalMetaInfo {
       val info = unitType match {
         case "Merge" => new MergeUnitInfo (queryUnitInfoList.size, node.nodeName, node)
         case "Project" => new ProjectUnitInfo (new TableID (None, "__anonymous__" + queryUnitInfoList.size.toString), Local, node)
+        case "Insert" => {
+          val id = node.asInstanceOf[InsertIntoTable].table.asInstanceOf[UnresolvedRelation].tableIdentifier
+          new ProjectUnitInfo(TableID.fromID(id), External, node)
+        }
         case _ => null
       }
       logger.debug(s"new unit named ${info.id}")

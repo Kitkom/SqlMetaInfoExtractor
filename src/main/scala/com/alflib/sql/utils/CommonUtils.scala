@@ -34,6 +34,24 @@ object CommonUtils {
     tableSchemas(id)
   }
   
+  def getAllColumnLineage(target: QueryUnitInfo, output: (ColumnID, ColumnID) => Unit) : Unit = {
+    target.nameToColumn.values.map(info => {
+      info.sourceList.filter(_.table!=None).map(src => getColumnLineage(new ColumnID(target.id, info.id.column), target.sources(src.table.get), src, output))
+    })
+  }
+  
+  def getColumnLineage(target: ColumnID, unit: QueryUnitInfo, column: ColumnID, output: (ColumnID, ColumnID) => Unit) : Unit = {
+    val col = column.column
+    unit.lifeType match {
+      case TableLifeType.External => output(target, column)
+      case _ => {
+        if (unit.nameToColumn.contains(col))
+          unit.nameToColumn(col).sourceList
+            .map(col=>getColumnLineage(target, unit.sources(col.table.get), col, output))
+      }
+    }
+  }
+  
   def visitFile(path: String, visitor: (LogicalPlan) => Unit) : Unit = {
     logger.info(s"Visiting file ${path}")
     val sql = new StringBuilder

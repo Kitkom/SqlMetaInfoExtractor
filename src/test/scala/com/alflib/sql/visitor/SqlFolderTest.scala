@@ -2,7 +2,7 @@ package com.alflib.sql.visitor
 
 import java.io.File
 
-import com.alflib.sql.utils.{CommonUtils, Extractors, GlobalMetaInfo}
+import com.alflib.sql.utils.{CommonUtils, Extractors, GlobalMetaInfo, TableLifeType}
 import org.apache.log4j.{Level, Logger}
 
 import scala.io.Source
@@ -21,6 +21,8 @@ object SqlFolderTest {
       GlobalMetaInfo.cleanUp
       logger.info(s"File ${file}, source list:")
       logger.info(GlobalMetaInfo.getSources)
+      GlobalMetaInfo.queryUnitInfoList.filter(_.lifeType == TableLifeType.External)
+        .map(unit => CommonUtils.getAllColumnLineage(unit , (t, s) => logger.info(s"${t.toString} <= ${s.toString}")))
       if (!GlobalMetaInfo.errors.isEmpty)
         logger.error(GlobalMetaInfo.errors.values)
     })
@@ -42,6 +44,8 @@ object SqlFileTest {
     GlobalMetaInfo.cleanUp
     logger.info(s"File ${file}, source list:")
     logger.info(GlobalMetaInfo.getSources)
+    GlobalMetaInfo.queryUnitInfoList.filter(_.lifeType == TableLifeType.External)
+      .map(unit => CommonUtils.getAllColumnLineage(unit , (t, s) => logger.info(s"${t.toString} <= ${s.toString}")))
   }
   
 }
