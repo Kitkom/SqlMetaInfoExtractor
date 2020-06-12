@@ -88,7 +88,7 @@ object GlobalMetaInfo {
     idToQueryUnitInfoMap.values.map(x => if (x.lifeType==Unknown) x.lifeType = External)
     
     // resolve * columns
-    queryUnitInfoList.map(_.resolve)
+    queryUnitInfoList.map(_.resolve(s=>errors("on_resolving_"+errors.size) = new ExtractorErrorException(s)))
   }
   
   def clear = {

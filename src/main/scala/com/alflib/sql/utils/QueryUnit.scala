@@ -25,12 +25,12 @@ abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value,
   var lineageResolved = false
   val sourceTableList = ListBuffer[TableID]()
   
-  def resolve() : Unit
-  def getSourceTables() : ListBuffer[TableID] = {
+  def resolve(errorHandler:(String)=>Unit) : Unit
+  def getSourceTables(errorHandler:(String)=>Unit=_=>{}): ListBuffer[TableID] = {
     lifeType match {
       case TableLifeType.External => ListBuffer(id)
       case _ => {
-        resolve()
+        resolve(errorHandler)
         sourceTableList
       }
     }
@@ -43,7 +43,7 @@ abstract class QueryUnitInfo(val id: TableID, var lifeType: TableLifeType.Value,
     if (col.id.column != "*")
       nameToColumn(col.id.column) = col
   }
-  def getColumns() : ListBuffer[String]
+  def getColumns(errorHandler:(String)=>Unit=_=>{}) : ListBuffer[String]
 }
 
 class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : TreeNode[_] = null)
@@ -55,13 +55,13 @@ class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : Tre
       sources(id) = info
     }
   }
-  def resolve() : Unit = {
+  def resolve(errorHandler:(String)=>Unit) : Unit = {
     if (!lineageResolved) {
       // table lineage
       lineageResolved = true
       sources.map { case (name, info) => // here, no sources should be null
         if (info.lifeType == TableLifeType.External) sourceTableList += name
-        else info.getSourceTables.map(x => sourceTableList += x)
+        else info.getSourceTables().map(x => sourceTableList += x)
       }
       
       // columns
@@ -83,15 +83,15 @@ class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : Tre
               srcCol.table = Option(directSources(0))
             }
             else {  // multiple source
-              val possibleSources = directSources.filter(id => sources(id).getColumns.contains(srcCol.column))
+              val possibleSources = directSources.filter(id => sources(id).getColumns().contains(srcCol.column))
               if (possibleSources.size == 0)
-                throw ExtractorErrorException(s"[$id]: Column '${srcCol.column}' not found in sources")
+                errorHandler(s"[$id]: Column '${srcCol.column}' not found in sources")
               else
                 srcCol.table = Option(possibleSources(0))
             }
           }
           else if (!directSources.contains(srcCol.table.get)) {
-            throw ExtractorErrorException(s"[$id]: $srcCol not from direct source list")
+            errorHandler(s"[$id]: $srcCol not from direct source list")
           }
         })
       })
@@ -103,11 +103,11 @@ class ProjectUnitInfo(id: TableID, val lifetype: TableLifeType.Value, node : Tre
   
     }
   }
-  def getColumns() : ListBuffer[String] = {
+  def getColumns(errorHandler:(String)=>Unit=_=>{}) : ListBuffer[String] = {
     lifeType match {
       case TableLifeType.External => getSchema.getColumns
       case _ => {
-        resolve()
+        resolve(errorHandler)
         columns.map(x => x.id.column)
       }
     }
@@ -132,7 +132,7 @@ class MergeUnitInfo(val number: Int, val mergeType: String, node : TreeNode[_])
         throw ExtractorErrorException(s"MergeUnit ${id} has more than 2 sources.")
     }
   }
-  def resolve() = {
+  def resolve(errorHandler:(String)=>Unit) = {
     if (!lineageResolved) {
       lineageResolved = true
       sources(directSources(0)).getColumns().map(x => columns += new ColumnInfo(ColumnID.fromName(x)))
@@ -142,8 +142,8 @@ class MergeUnitInfo(val number: Int, val mergeType: String, node : TreeNode[_])
           .addSource(new ColumnID(directSources(1), sources(directSources(1)).getColumns()(index)))
     }
   }
-  def getColumns() : ListBuffer[String] = {
-    resolve()
+  def getColumns(errorHandler:(String)=>Unit=_=>{}) : ListBuffer[String] = {
+    resolve(errorHandler)
     columns.map(_.id.column)
   }
   

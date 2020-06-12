@@ -76,8 +76,8 @@ class LogicalPlanVisitorTest extends org.scalatest.FunSuite {
     GlobalMetaInfo.clear
     CommonUtils.visitMultipleSqls(sql, x => LogicalPlanVisitor.visit(x, Extractors.extractMetaInfo(_)))
     GlobalMetaInfo.cleanUp
-    assert(GlobalMetaInfo.getQueryUnitInfo(TableID.fromArgString("tZ")).getSourceTables.size == 5)
-    assert(GlobalMetaInfo.getQueryUnitInfo(TableID.fromArgString("tY")).getSourceTables.size == 3)
+    assert(GlobalMetaInfo.getQueryUnitInfo(TableID.fromArgString("tZ")).getSourceTables().size == 5)
+    assert(GlobalMetaInfo.getQueryUnitInfo(TableID.fromArgString("tY")).getSourceTables().size == 3)
     assert(GlobalMetaInfo.queryUnitInfoList.size == 5)
   }
   
