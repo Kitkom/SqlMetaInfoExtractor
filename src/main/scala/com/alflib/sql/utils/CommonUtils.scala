@@ -47,7 +47,9 @@ object CommonUtils {
       case _ => {
         if (unit.nameToColumn.contains(col))
           unit.nameToColumn(col).sourceList
-            .map(col=>getColumnLineage(target, unit.sources(col.table.get), col, output))
+            .map(col=> if (!col.table.isEmpty)
+              getColumnLineage(target, unit.sources(col.table.get), col, output)
+            )
       }
     }
   }

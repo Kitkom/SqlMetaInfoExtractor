@@ -114,7 +114,7 @@ object GlobalMetaInfo {
     logger.debug(sourceTableList)
     //logger.debug(idToQueryUnitInfoMap.values)
     logger.debug(queryUnitInfoList)
-    if (!errors.isEmpty) logger.error(errors)
+    errors.map(logger.error(_))
   }
   
   def getSources = {

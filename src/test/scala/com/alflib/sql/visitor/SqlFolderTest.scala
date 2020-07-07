@@ -23,8 +23,7 @@ object SqlFolderTest {
       logger.info(GlobalMetaInfo.getSources)
       GlobalMetaInfo.queryUnitInfoList.filter(_.lifeType == TableLifeType.External)
         .map(unit => CommonUtils.getAllColumnLineage(unit , (t, s) => logger.info(s"${t.toString} <= ${s.toString}")))
-      if (!GlobalMetaInfo.errors.isEmpty)
-        logger.error(GlobalMetaInfo.errors.values)
+      GlobalMetaInfo.errors.map(logger.error(_))
     })
   }
   
